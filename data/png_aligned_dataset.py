@@ -40,10 +40,10 @@ class PngAlignedDataset(BaseDataset):
         self.ext_A = opt.ext_A
         self.ext_B = opt.ext_B
         self.filenames = get_common_file_names(
-            opt.path_A, opt.path_B, opt.ext_A, opt.ext_B)  # extension stripped (just name)
+            self.path_A, self.path_B, self.ext_A, self.ext_B)  # extension stripped (just name)
         assert (self.opt.load_size >= self.opt.crop_size)
-        # self.input_nc = self.opt.output_nc if self.opt.direction == 'BtoA' else self.opt.input_nc
-        # self.output_nc = self.opt.input_nc if self.opt.direction == 'BtoA' else self.opt.output_nc
+        self.input_nc = self.opt.output_nc if self.opt.direction == 'BtoA' else self.opt.input_nc
+        self.output_nc = self.opt.input_nc if self.opt.direction == 'BtoA' else self.opt.output_nc
 
     def __getitem__(self, index):
         """Return a data point and its metadata information.
@@ -83,7 +83,7 @@ class PngAlignedDataset(BaseDataset):
         A = A_transform(A)
         B = B_transform(B)
 
-        return {'A': A, 'B': B, 'A_paths': self.path_A, 'B_paths': self.path_B}
+        return {'A': A, 'B': B, 'A_paths': str(self.path_A.absolute()), 'B_paths': str(self.path_B.absolute())}
 
     def __len__(self):
         """Return the total number of images in the dataset."""
