@@ -64,6 +64,7 @@ class TrainOptions(BaseOptions):
                             help='extension of A (eg: jpg, png)')
         parser.add_argument('--ext_B', type=str, default='png',
                             help='extension of B (eg: jpg, png)')
-
+        parser.add_argument(
+            '--do_not_load_D', action='store_true', help="Dont load state dict of D")
         self.isTrain = True
         return parser
