@@ -18,7 +18,7 @@ else:
     VisdomExceptionBase = ConnectionError
 
 
-def save_images(webpage, visuals, image_path, aspect_ratio=1.0, width=256, use_wandb=False):
+def save_images(webpage, visuals, image_path, aspect_ratio=1.0, width=256, use_wandb=False, count=0):
     """Save images to the disk.
 
     Parameters:
@@ -38,6 +38,8 @@ def save_images(webpage, visuals, image_path, aspect_ratio=1.0, width=256, use_w
     ims, txts, links = [], [], []
     ims_dict = {}
     for label, im_data in visuals.items():
+        if count > 0:
+            label = f"{label}_{count}"
         im = util.tensor2im(im_data)
         image_name = '%s_%s.png' % (name, label)
         save_path = os.path.join(image_dir, image_name)
@@ -82,12 +84,14 @@ class Visualizer():
 
         if self.display_id > 0:  # connect to a visdom server given <display_port> and <display_server>
             import visdom
-            self.vis = visdom.Visdom(server=opt.display_server, port=opt.display_port, env=opt.display_env)
+            self.vis = visdom.Visdom(
+                server=opt.display_server, port=opt.display_port, env=opt.display_env)
             if not self.vis.check_connection():
                 self.create_visdom_connections()
 
         if self.use_wandb:
-            self.wandb_run = wandb.init(project=self.wandb_project_name, name=opt.name, config=opt) if not wandb.run else wandb.run
+            self.wandb_run = wandb.init(
+                project=self.wandb_project_name, name=opt.name, config=opt) if not wandb.run else wandb.run
             self.wandb_run._label(repo='CycleGAN-and-pix2pix')
 
         if self.use_html:  # create an HTML object at <checkpoints_dir>/web/; images will be saved under <checkpoints_dir>/web/images/
@@ -96,10 +100,12 @@ class Visualizer():
             print('create web directory %s...' % self.web_dir)
             util.mkdirs([self.web_dir, self.img_dir])
         # create a logging file to store training losses
-        self.log_name = os.path.join(opt.checkpoints_dir, opt.name, 'loss_log.txt')
+        self.log_name = os.path.join(
+            opt.checkpoints_dir, opt.name, 'loss_log.txt')
         with open(self.log_name, "a") as log_file:
             now = time.strftime("%c")
-            log_file.write('================ Training Loss (%s) ================\n' % now)
+            log_file.write(
+                '================ Training Loss (%s) ================\n' % now)
 
     def reset(self):
         """Reset the self.saved status"""
@@ -143,7 +149,8 @@ class Visualizer():
                     if idx % ncols == 0:
                         label_html += '<tr>%s</tr>' % label_html_row
                         label_html_row = ''
-                white_image = np.ones_like(image_numpy.transpose([2, 0, 1])) * 255
+                white_image = np.ones_like(
+                    image_numpy.transpose([2, 0, 1])) * 255
                 while idx % ncols != 0:
                     images.append(white_image)
                     label_html_row += '<td></td>'
@@ -187,16 +194,19 @@ class Visualizer():
                 result_table.add_data(*table_row)
                 self.wandb_run.log({"Result": result_table})
 
-        if self.use_html and (save_result or not self.saved):  # save images to an HTML file if they haven't been saved.
+        # save images to an HTML file if they haven't been saved.
+        if self.use_html and (save_result or not self.saved):
             self.saved = True
             # save images to the disk
             for label, image in visuals.items():
                 image_numpy = util.tensor2im(image)
-                img_path = os.path.join(self.img_dir, 'epoch%.3d_%s.png' % (epoch, label))
+                img_path = os.path.join(
+                    self.img_dir, 'epoch%.3d_%s.png' % (epoch, label))
                 util.save_image(image_numpy, img_path)
 
             # update website
-            webpage = html.HTML(self.web_dir, 'Experiment name = %s' % self.name, refresh=1)
+            webpage = html.HTML(
+                self.web_dir, 'Experiment name = %s' % self.name, refresh=1)
             for n in range(epoch, 0, -1):
                 webpage.add_header('epoch [%d]' % n)
                 ims, txts, links = [], [], []
@@ -221,10 +231,12 @@ class Visualizer():
         if not hasattr(self, 'plot_data'):
             self.plot_data = {'X': [], 'Y': [], 'legend': list(losses.keys())}
         self.plot_data['X'].append(epoch + counter_ratio)
-        self.plot_data['Y'].append([losses[k] for k in self.plot_data['legend']])
+        self.plot_data['Y'].append([losses[k]
+                                   for k in self.plot_data['legend']])
         try:
             self.vis.line(
-                X=np.stack([np.array(self.plot_data['X'])] * len(self.plot_data['legend']), 1),
+                X=np.stack([np.array(self.plot_data['X'])] *
+                           len(self.plot_data['legend']), 1),
                 Y=np.array(self.plot_data['Y']),
                 opts={
                     'title': self.name + ' loss over time',
@@ -248,7 +260,8 @@ class Visualizer():
             t_comp (float) -- computational time per data point (normalized by batch_size)
             t_data (float) -- data loading time per data point (normalized by batch_size)
         """
-        message = '(epoch: %d, iters: %d, time: %.3f, data: %.3f) ' % (epoch, iters, t_comp, t_data)
+        message = '(epoch: %d, iters: %d, time: %.3f, data: %.3f) ' % (
+            epoch, iters, t_comp, t_data)
         for k, v in losses.items():
             message += '%s: %.3f ' % (k, v)
 
