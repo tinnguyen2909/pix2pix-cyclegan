@@ -1,8 +1,11 @@
+from collections import namedtuple
 import os
 from data.base_dataset import BaseDataset, get_params, get_transform
 from data.image_folder import make_dataset
 from PIL import Image
 from pathlib import Path
+
+DSFile = namedtuple("DSFile", ["PathA", "PathB", "Filename"])
 
 
 def get_common_file_names(pathA, pathB, extA, extB):
@@ -11,7 +14,8 @@ def get_common_file_names(pathA, pathB, extA, extB):
     filesB = {file.stem for file in Path(pathB).glob(f'*{extB}')}
 
     # Find the intersection of file names
-    common_files = list(filesA.intersection(filesB))
+    common_files = [DSFile(pathA, pathB, file)
+                    for file in list(filesA.intersection(filesB))]
 
     return common_files
 
@@ -35,12 +39,23 @@ class PngAlignedDataset(BaseDataset):
         # self.AB_paths = sorted(make_dataset(
         #     self.dir_AB, opt.max_dataset_size))  # get image paths
         # crop_size should be smaller than the size of loaded image
-        self.path_A = Path(opt.path_A) / opt.phase
-        self.path_B = Path(opt.path_B) / opt.phase
+        # handle multiple paths
+        path_As = [p.strip() for p in opt.path_A.split(',')]
+        path_Bs = [p.strip() for p in opt.path_B.split(',')]
         self.ext_A = opt.ext_A
         self.ext_B = opt.ext_B
-        self.filenames = get_common_file_names(
-            self.path_A, self.path_B, self.ext_A, self.ext_B)  # extension stripped (just name)
+        self.dataset_files = []
+        assert len(path_As) == len(
+            path_Bs), "path_A and path_B should have the same number of paths"
+        for path_A, path_B in zip(path_As, path_Bs):
+
+            path_A = Path(path_A) / opt.phase
+            path_B = Path(path_B) / opt.phase
+
+            files = get_common_file_names(
+                path_A, path_B, self.ext_A, self.ext_B)  # extension stripped (just name)
+
+            self.dataset_files += files
         assert (self.opt.load_size >= self.opt.crop_size)
         self.input_nc = self.opt.output_nc if self.opt.direction == 'BtoA' else self.opt.input_nc
         self.output_nc = self.opt.input_nc if self.opt.direction == 'BtoA' else self.opt.output_nc
@@ -66,9 +81,9 @@ class PngAlignedDataset(BaseDataset):
         # w2 = int(w / 2)
         # A = AB.crop((0, 0, w2, h))
         # B = AB.crop((w2, 0, w, h))
-
-        A = Image.open(self.path_A / f"{self.filenames[index]}.{self.ext_A}")
-        B = Image.open(self.path_B / f"{self.filenames[index]}.{self.ext_B}")
+        pathA, pathB, filename = self.dataset_files[index]
+        A = Image.open(pathA / f"{filename}.{self.ext_A}")
+        B = Image.open(pathB / f"{filename}.{self.ext_B}")
         B_alpha = B.split()[-1]  # alpha channel
         A_split = A.split()
         A = Image.merge("RGBA", (A_split[0], A_split[1], A_split[2], B_alpha))
@@ -87,4 +102,4 @@ class PngAlignedDataset(BaseDataset):
 
     def __len__(self):
         """Return the total number of images in the dataset."""
-        return len(self.filenames)
+        return len(self.dataset_files)
