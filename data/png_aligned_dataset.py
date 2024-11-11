@@ -5,7 +5,7 @@ from data.image_folder import make_dataset
 from PIL import Image
 from pathlib import Path
 
-DSFile = namedtuple("DSFile", ["PathA", "PathB", "Filename"])
+DSFile = namedtuple("DSFile", ["PathA", "PathB", "Filename", "ExtA", "ExtB"])
 
 
 def get_common_file_names(pathA, pathB, extA, extB):
@@ -14,7 +14,7 @@ def get_common_file_names(pathA, pathB, extA, extB):
     filesB = {file.stem for file in Path(pathB).glob(f'*{extB}')}
 
     # Find the intersection of file names
-    common_files = [DSFile(pathA, pathB, file)
+    common_files = [DSFile(pathA, pathB, file, extA, extB)
                     for file in list(filesA.intersection(filesB))]
 
     return common_files
@@ -40,20 +40,25 @@ class PngAlignedDataset(BaseDataset):
         #     self.dir_AB, opt.max_dataset_size))  # get image paths
         # crop_size should be smaller than the size of loaded image
         # handle multiple paths
+        # import pdb
+        # pdb.set_trace()
         path_As = [p.strip() for p in opt.path_A.split(',')]
         path_Bs = [p.strip() for p in opt.path_B.split(',')]
-        self.ext_A = opt.ext_A
-        self.ext_B = opt.ext_B
+        ext_As = [e.strip() for e in opt.ext_A.split(',')]
+        ext_Bs = [e.strip() for e in opt.ext_B.split(',')]
         self.dataset_files = []
         assert len(path_As) == len(
             path_Bs), "path_A and path_B should have the same number of paths"
-        for path_A, path_B in zip(path_As, path_Bs):
+        assert len(ext_As) == len(ext_Bs)
+        assert len(ext_As) == len(path_As)
+        assert len(ext_Bs) == len(path_Bs)
+        for path_A, path_B, ext_A, ext_B in zip(path_As, path_Bs, ext_As, ext_Bs):
 
             path_A = Path(path_A) / opt.phase
             path_B = Path(path_B) / opt.phase
 
             files = get_common_file_names(
-                path_A, path_B, self.ext_A, self.ext_B)  # extension stripped (just name)
+                path_A, path_B, ext_A, ext_B)  # extension stripped (just name)
 
             self.dataset_files += files
         assert (self.opt.load_size >= self.opt.crop_size)
@@ -81,12 +86,16 @@ class PngAlignedDataset(BaseDataset):
         # w2 = int(w / 2)
         # A = AB.crop((0, 0, w2, h))
         # B = AB.crop((w2, 0, w, h))
-        pathA, pathB, filename = self.dataset_files[index]
-        A = Image.open(pathA / f"{filename}.{self.ext_A}")
-        B = Image.open(pathB / f"{filename}.{self.ext_B}")
-        B_alpha = B.split()[-1]  # alpha channel
-        A_split = A.split()
-        A = Image.merge("RGBA", (A_split[0], A_split[1], A_split[2], B_alpha))
+        pathA, pathB, filename, extA, extB = self.dataset_files[index]
+        A = Image.open(pathA / f"{filename}.{extA}")
+        B = Image.open(pathB / f"{filename}.{extB}")
+        # check if B has an alpha channel
+        if B.mode == 'RGBA':
+            B_alpha = B.split()[-1]  # alpha channel
+            A_split = A.split()
+            # replace B's alpha channel with A's alpha channel
+            A = Image.merge(
+                "RGBA", (A_split[0], A_split[1], A_split[2], B_alpha))
 
         # apply the same transform to both A and B
         transform_params = get_params(self.opt, A.size)
@@ -98,7 +107,7 @@ class PngAlignedDataset(BaseDataset):
         A = A_transform(A)
         B = B_transform(B)
 
-        return {'A': A, 'B': B, 'A_paths': str(self.path_A.absolute()), 'B_paths': str(self.path_B.absolute())}
+        return {'A': A, 'B': B, 'A_paths': str(pathA), 'B_paths': str(pathB)}
 
     def __len__(self):
         """Return the total number of images in the dataset."""
