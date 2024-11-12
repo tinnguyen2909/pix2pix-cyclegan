@@ -66,5 +66,8 @@ class TrainOptions(BaseOptions):
                             help='extension of B (eg: jpg, png)')
         parser.add_argument(
             '--do_not_load_D', action='store_true', help="Dont load state dict of D")
+        parser.add_argument(
+            "--adjust_brightness", action="store_true", help="Adjust brightness", default=False
+        )
         self.isTrain = True
         return parser
