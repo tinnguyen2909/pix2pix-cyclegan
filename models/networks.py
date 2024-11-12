@@ -3,6 +3,64 @@ import torch.nn as nn
 from torch.nn import init
 import functools
 from torch.optim import lr_scheduler
+import torchvision.models as models
+from torchvision.models import VGG19_Weights
+
+
+class VGGPerceptualLoss(nn.Module):
+    def __init__(self, layer_weights=[1.0, 1.0, 1.0, 1.0]):
+        super(VGGPerceptualLoss, self).__init__()
+        vgg = models.vgg19(weights=VGG19_Weights.DEFAULT)
+
+        self.blocks = nn.ModuleList([
+            vgg.features[:4].eval(),    # Block 1
+            vgg.features[4:9].eval(),   # Block 2
+            vgg.features[9:18].eval(),  # Block 3
+            vgg.features[18:27].eval()  # Block 4
+        ])
+
+        # Single adaptive pool for input images
+        self.adaptive_pool = nn.AdaptiveAvgPool2d(
+            (224, 224))  # VGG default input size
+
+        for block in self.blocks:
+            for p in block.parameters():
+                p.requires_grad = False
+
+        self.layer_weights = layer_weights
+        self.mean = torch.tensor([0.485, 0.456, 0.406]).view(1, 3, 1, 1)
+        self.std = torch.tensor([0.229, 0.224, 0.225]).view(1, 3, 1, 1)
+
+    def forward(self, input, target):
+        if input.shape[1] == 1:
+            input = input.repeat(1, 3, 1, 1)
+        if target.shape[1] == 1:
+            target = target.repeat(1, 3, 1, 1)
+        if input.shape[1] == 4:
+            input = input[:, :3, :, :]
+        if target.shape[1] == 4:
+            target = target[:, :3, :, :]
+
+        # First pool the inputs to VGG size
+        input = self.adaptive_pool(input)
+        target = self.adaptive_pool(target)
+
+        # Then normalize
+        input = (input - self.mean.to(input.device)) / \
+            self.std.to(input.device)
+        target = (target - self.mean.to(target.device)) / \
+            self.std.to(target.device)
+
+        loss = 0.0
+        x = input
+        y = target
+
+        for block, weight in zip(self.blocks, self.layer_weights):
+            x = block(x)
+            y = block(y)
+            loss += weight * torch.nn.functional.l1_loss(x, y)
+
+        return loss
 
 
 ###############################################################################

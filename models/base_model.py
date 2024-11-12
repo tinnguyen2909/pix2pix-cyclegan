@@ -45,6 +45,9 @@ class BaseModel(ABC):
         self.optimizers = []
         self.image_paths = []
         self.metric = 0  # used for learning rate policy 'plateau'
+        self.use_perceptual_loss = False
+        if hasattr(self.opt, "use_perceptual_loss") and self.opt.use_perceptual_loss:
+            self.use_perceptual_loss = True
 
     @staticmethod
     def modify_commandline_options(parser, is_train):

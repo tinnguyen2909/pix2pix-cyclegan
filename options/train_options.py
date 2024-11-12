@@ -69,5 +69,14 @@ class TrainOptions(BaseOptions):
         parser.add_argument(
             "--adjust_brightness", action="store_true", help="Adjust brightness", default=False
         )
+        parser.add_argument(
+            "--use_perceptual_loss", action="store_true", help="Use perceptual loss", default=False
+        )
+        parser.add_argument(
+            "--lambda_perceptual", type=float, default=10.0, help="Perceptual loss weight"
+        )
+        parser.add_argument(
+            "--lambda_perceptual_content", type=float, default=1.0, help="Perceptual loss weight"
+        )
         self.isTrain = True
         return parser
