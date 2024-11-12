@@ -187,7 +187,7 @@ class BaseModel(ABC):
         """
         for name in self.model_names:
             if isinstance(name, str):
-                if hasattr(self.opt, "do_not_load_D") and self.opt.do_not_load_D:
+                if hasattr(self.opt, "do_not_load_D") and self.opt.do_not_load_D and name == "D":
                     continue
                 load_filename = '%s_net_%s.pth' % (epoch, name)
                 load_path = os.path.join(self.save_dir, load_filename)
