@@ -1,5 +1,6 @@
 import os
 import torch
+import numpy as np
 from collections import OrderedDict
 from abc import ABC, abstractmethod
 from . import networks
@@ -111,6 +112,29 @@ class BaseModel(ABC):
         with torch.no_grad():
             self.forward()
             self.compute_visuals()
+
+    def vgg_l1(self):
+        # only calculate when test
+        if not self.isTrain:
+
+            distances = []
+            if hasattr(self, "vgg_pl") and self.vgg_pl is not None:
+                pass
+            else:
+                self.vgg_pl = networks.VGGPerceptualLoss()
+                self.vgg_pl.to(self.device)
+            self.vgg_pl.eval()
+            for i, bl in enumerate(self.vgg_pl.blocks):
+                # calculate loss for 1 block at a time
+                self.vgg_pl.layer_weights = [
+                    1. if i == j else 0. for j in range(len(self.vgg_pl.blocks))]
+                distances.append([self.vgg_pl.forward(
+                    self.real_B, self.fake_B),
+                    self.vgg_pl.forward(self.real_A, self.fake_B),
+                    self.vgg_pl.forward(
+                        self.real_A, self.real_B)])
+            distances = np.array(distances).transpose()
+            return distances
 
     def compute_visuals(self):
         """Calculate additional output images for visdom and HTML visualization"""

@@ -32,6 +32,9 @@ from data import create_dataset
 from models import create_model
 from util.visualizer import save_images
 from util import html
+import time
+import onnxruntime as ort
+
 
 try:
     import wandb
@@ -76,15 +79,23 @@ if __name__ == '__main__':
     # For [CycleGAN]: It should not affect CycleGAN as CycleGAN uses instancenorm without dropout.
     if opt.eval:
         model.eval()
+    # session = ort.InferenceSession("onnx_model.onnx")
     for i, data in enumerate(dataset):
         if i >= opt.num_test:  # only apply our model to opt.num_test images.
             break
+        start_time = time.time()
+        # input_name = session.get_inputs()[0].name
+        # output_name = session.get_outputs()[0].name
+        # outputs = session.run([output_name], {input_name: data["A"].numpy()})
         model.set_input(data)  # unpack data from data loader
         model.test()           # run inference
+        end_time = time.time()
+        print("time: {}".format(end_time - start_time))
         visuals = model.get_current_visuals()  # get image results
         img_path = model.get_image_paths()     # get image paths
+        distances = model.vgg_l1()
         if i % 5 == 0:  # save images to an HTML file
             print('processing (%04d)-th image... %s' % (i, img_path))
         save_images(webpage, visuals, img_path, aspect_ratio=opt.aspect_ratio,
-                    width=opt.display_winsize, use_wandb=opt.use_wandb, count=i)
+                    width=opt.display_winsize, use_wandb=opt.use_wandb, count=i, distances=distances)
     webpage.save()  # save the HTML
