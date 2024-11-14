@@ -134,7 +134,7 @@ class CycleGANModel(BaseModel):
             print(self.netG_A.device_ids)
         if self.isTrain and self.use_perceptual_loss:
             self.criterionPerceptual = networks.VGGPerceptualLoss(
-                layer_weights=[2, 0.5, 0.25, 1]
+                layer_weights=[0.75, 0.5, 0.25, 0.6]
             ).to(self.device)
 
     def set_input(self, input):
