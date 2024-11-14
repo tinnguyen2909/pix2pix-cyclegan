@@ -73,7 +73,10 @@ class TrainOptions(BaseOptions):
             "--use_perceptual_loss", action="store_true", help="Use perceptual loss", default=False
         )
         parser.add_argument(
-            "--lambda_perceptual", type=float, default=10.0, help="Perceptual loss weight"
+            "--lambda_perceptual", type=float, default=1.0, help="Perceptual loss weight"
+        )
+        parser.add_argument(
+            "--use_loss_perceptual_cycle", action="store_true", help="Use perceptual loss for cycle (only applied for cyclegan)", default=True
         )
         parser.add_argument(
             "--lambda_perceptual_content", type=float, default=1.0, help="Perceptual loss weight"

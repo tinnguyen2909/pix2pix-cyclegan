@@ -61,7 +61,7 @@ class CycleGANModel(BaseModel):
         BaseModel.__init__(self, opt)
         # specify the training losses you want to print out. The training/test scripts will call <BaseModel.get_current_losses>
         self.loss_names = ['D_A', 'G_A', 'cycle_A',
-                           'idt_A', 'D_B', 'G_B', 'cycle_B', 'idt_B']
+                           'idt_A', 'D_B', 'G_B', 'cycle_B', 'idt_B', "Perceptual"]
         # specify the images you want to save/display. The training/test scripts will call <BaseModel.get_current_visuals>
         visual_names_A = ['real_A', 'fake_B', 'rec_A']
         visual_names_B = ['real_B', 'fake_A', 'rec_B']
@@ -132,6 +132,10 @@ class CycleGANModel(BaseModel):
                 new_dict["module." + k] = v
             self.netG_A.load_state_dict(new_dict)
             print(self.netG_A.device_ids)
+        if self.isTrain and self.use_perceptual_loss:
+            self.criterionPerceptual = networks.VGGPerceptualLoss(
+                layer_weights=[2, 0.5, 0.25, 1]
+            ).to(self.device)
 
     def set_input(self, input):
         """Unpack input data from the dataloader and perform necessary pre-processing steps.
@@ -217,6 +221,25 @@ class CycleGANModel(BaseModel):
         # combined loss and calculate gradients
         self.loss_G = self.loss_G_A + self.loss_G_B + self.loss_cycle_A + \
             self.loss_cycle_B + self.loss_idt_A + self.loss_idt_B
+        if self.use_perceptual_loss:
+            self.loss_Perceptual_AB = self.criterionPerceptual(
+                self.fake_B, self.real_A)
+            self.loss_Perceptual_BA = self.criterionPerceptual(
+                self.fake_A, self.real_B)
+            if hasattr(self.opt, 'use_loss_perceptual_cycle') and self.opt.use_loss_perceptual_cycle:
+                self.loss_Perceptual_Cycle_A = self.criterionPerceptual(
+                    self.rec_A, self.real_A)
+                self.loss_Perceptual_Cycle_B = self.criterionPerceptual(
+                    self.rec_B, self.real_B)
+                self.loss_Perceptual = (
+                    self.loss_Perceptual_AB + self.loss_Perceptual_BA +
+                    self.loss_Perceptual_Cycle_A + self.loss_Perceptual_Cycle_B
+                ) * self.opt.lambda_perceptual
+            else:
+                self.loss_Perceptual = (
+                    self.loss_Perceptual_AB + self.loss_Perceptual_BA
+                ) * self.opt.lambda_perceptual
+            self.loss_G += self.loss_Perceptual
         self.loss_G.backward()
 
     def optimize_parameters(self):
