@@ -61,7 +61,9 @@ class CycleGANModel(BaseModel):
         BaseModel.__init__(self, opt)
         # specify the training losses you want to print out. The training/test scripts will call <BaseModel.get_current_losses>
         self.loss_names = ['D_A', 'G_A', 'cycle_A',
-                           'idt_A', 'D_B', 'G_B', 'cycle_B', 'idt_B', "Perceptual"]
+                           'idt_A', 'D_B', 'G_B', 'cycle_B', 'idt_B']
+        if self.use_perceptual_loss:
+            self.loss_names.append("Perceptual")
         # specify the images you want to save/display. The training/test scripts will call <BaseModel.get_current_visuals>
         visual_names_A = ['real_A', 'fake_B', 'rec_A']
         visual_names_B = ['real_B', 'fake_A', 'rec_B']
